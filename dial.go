@@ -11,11 +11,14 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	http "github.com/bogdanfinn/fhttp"
+
+	tls_client "github.com/bogdanfinn/tls-client"
 
 	"nhooyr.io/websocket/internal/errd"
 )
@@ -25,7 +28,7 @@ type DialOptions struct {
 	// HTTPClient is used for the connection.
 	// Its Transport must return writable bodies for WebSocket handshakes.
 	// http.Transport does beginning with Go 1.12.
-	HTTPClient *http.Client
+	HTTPClient tls_client.HttpClient
 
 	// HTTPHeader specifies the HTTP headers included in the handshake request.
 	HTTPHeader http.Header
@@ -58,33 +61,33 @@ func (opts *DialOptions) cloneWithDefaults(ctx context.Context) (context.Context
 		o = *opts
 	}
 	if o.HTTPClient == nil {
-		o.HTTPClient = http.DefaultClient
+		o.HTTPClient, _ = tls_client.NewHttpClient(tls_client.NewNoopLogger())
 	}
-	if o.HTTPClient.Timeout > 0 {
-		ctx, cancel = context.WithTimeout(ctx, o.HTTPClient.Timeout)
-
-		newClient := *o.HTTPClient
-		newClient.Timeout = 0
-		o.HTTPClient = &newClient
-	}
+	// if o.HTTPClient.Timeout > 0 {
+	// 	ctx, cancel = context.WithTimeout(ctx, o.HTTPClient.Timeout)
+	//
+	// 	newClient := *o.HTTPClient
+	// 	newClient.Timeout = 0
+	// 	o.HTTPClient = &newClient
+	// }
 	if o.HTTPHeader == nil {
 		o.HTTPHeader = http.Header{}
 	}
-	newClient := *o.HTTPClient
-	oldCheckRedirect := o.HTTPClient.CheckRedirect
-	newClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		switch req.URL.Scheme {
-		case "ws":
-			req.URL.Scheme = "http"
-		case "wss":
-			req.URL.Scheme = "https"
-		}
-		if oldCheckRedirect != nil {
-			return oldCheckRedirect(req, via)
-		}
-		return nil
-	}
-	o.HTTPClient = &newClient
+	newClient := o.HTTPClient
+	// oldCheckRedirect := o.HTTPClient.GetFollowRedirect()
+	// newClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+	// 	switch req.URL.Scheme {
+	// 	case "ws":
+	// 		req.URL.Scheme = "http"
+	// 	case "wss":
+	// 		req.URL.Scheme = "https"
+	// 	}
+	// 	if oldCheckRedirect != nil {
+	// 		return oldCheckRedirect(req, via)
+	// 	}
+	// 	return nil
+	// }
+	o.HTTPClient = newClient
 
 	return ctx, cancel, &o
 }

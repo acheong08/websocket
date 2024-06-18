@@ -11,11 +11,12 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"net/textproto"
 	"net/url"
 	"path/filepath"
 	"strings"
+
+	http "github.com/bogdanfinn/fhttp"
 
 	"nhooyr.io/websocket/internal/errd"
 )
